@@ -1,0 +1,59 @@
+<head>
+    <style> body { margin: 0; } </style>
+  
+    <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
+    <!--<script src="../../dist/3d-force-graph.js"></script>-->
+  </head>
+  
+  <body>
+    <div id="3d-graph"></div>
+  
+    <script type="module">
+      import * as THREE from 'https://esm.sh/three';
+
+      // Simple glow helper
+      function makeGlowSprite(color, size) {
+        // Slightly larger, translucent halo around the image sprite
+        const glowMaterial = new THREE.SpriteMaterial({
+          color,
+          transparent: true,
+          opacity: 0.15,
+          depthWrite: false
+        });
+        const glowSprite = new THREE.Sprite(glowMaterial);
+        glowSprite.scale.set(size * 1.15, size * 1.15);
+        return glowSprite;
+      }
+
+      // Initialize graph
+      const Graph = ForceGraph3D()(document.getElementById('3d-graph'))
+        .nodeThreeObject(({ img }) => {
+          const file = img.startsWith('figures/') ? img : `figures/${img}`;
+          const imgTexture = new THREE.TextureLoader().load(`./${file}`);
+          imgTexture.colorSpace = THREE.SRGBColorSpace;
+          const material = new THREE.SpriteMaterial({ map: imgTexture, depthWrite: false });
+
+          const group = new THREE.Group();
+          const sprite = new THREE.Sprite(material);
+          const size = 12;
+          sprite.scale.set(size, size);
+          group.add(sprite);
+
+          const glow = makeGlowSprite(0xffffff, size);
+          group.add(glow);
+
+          return group;
+        })
+        .nodeThreeObjectExtend(false);
+        
+
+      Graph.d3Force('charge').strength(-120);
+      
+
+      // Load data and render
+      fetch('figure_graph.json')
+        .then(res => res.json())
+        .then(data => Graph.graphData(data));
+
+    </script>
+  </body>

@@ -1,32 +1,82 @@
-<!DOCTYPE html>
-<html>
 <head>
-  <meta charset="utf-8" />
-  <title>Paper Latent Map</title>
-  <style>
-    body { margin: 0; background: black; }
-    #graph { width: 100vw; height: 100vh; }
-  </style>
+  <style> body { margin: 0; } </style>
+
+  <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
 </head>
+
 <body>
-<div id="graph"></div>
+  <div id="3d-graph"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/3d-force-graph"></script>
+  <script type="module">
+    import * as THREE from "https://esm.sh/three"; 
+    import SpriteText from "https://esm.sh/three-spritetext";
 
-<script>
-fetch("paper_graph.json")
-  .then(res => res.json())
-  .then(data => {
-    const Graph = ForceGraph3D()(document.getElementById("graph"))
-      .backgroundColor("#020208")
-      .linkColor(() => "rgba(255,255,255,0.1)")
-      .nodeAutoColorBy('cluster')
-      .nodeLabel(node => node.name)
-    //   .nodeAutoColorBy("val")
-      .linkWidth(link => link.value * 2)
-      .linkOpacity(0.4)
-      .graphData(data)
-  });
-</script>
+    const CLUSTER_COLORS = {
+      1: "#7bb7ff",
+      2: "#a5d9a5",
+      3: "#f5eaba",
+      4: "#c084c4",
+      5: "#f5ba98"
+    };
+
+    // Define this function within your <script type="module">
+    function makeGlowSphere(color, radius) {
+      const glowRadius = radius * 1.8; // Make the glow slightly larger than the node
+      
+      // Create a sphere geometry for the glow
+      const geometry = new THREE.SphereGeometry(glowRadius, 24, 24);
+      
+      // Use MeshBasicMaterial: it's not affected by scene lights, making it suitable for a 'glow'.
+      const material = new THREE.MeshBasicMaterial({
+          color: color,
+          transparent: true,
+          opacity: 0.25, // Adjust opacity for the glow intensity
+          side: THREE.BackSide // Render faces pointing away from the camera for a subtle halo effect
+      });
+      
+      const glowMesh = new THREE.Mesh(geometry, material);
+      
+      glowMesh.renderOrder = -1; 
+      return glowMesh;
+    }  
+
+    const Graph = new ForceGraph3D(document.getElementById('3d-graph'))
+        .jsonUrl('paper_graph.json')
+        .nodeAutoColorBy('cluster')
+        .nodeThreeObject(node => {
+  
+          // This value is based on the 'cluster' property as you originally intended
+          const finalColor = CLUSTER_COLORS[node.cluster] || "#cccccc"; 
+          const group = new THREE.Group();
+          const radius = node.size ? node.size : 4;
+
+          // sphere body
+          const sphere = new THREE.Mesh(
+          new THREE.SphereGeometry(radius, 24, 24),
+          new THREE.MeshStandardMaterial({
+              color: finalColor, 
+              roughness: 0.32,
+              metalness: 0.25,
+              emissive: finalColor, 
+              emissiveIntensity: 0.18
+          })
+          );
+          group.add(sphere);
+
+          // glow halo
+          const glow = makeGlowSphere(finalColor, radius); 
+          group.add(glow);
+
+          const sprite = new SpriteText(node.name || "");
+          sprite.material.depthWrite = false;
+          sprite.color = finalColor;
+          sprite.textHeight = 8;
+          sprite.center.y = -0.6;
+          group.add(sprite);
+
+          return group;})
+        .nodeThreeObjectExtend(true);
+    Graph.d3Force('charge').strength(-120);
+
+  </script>
 </body>
-</html>
