@@ -1,7 +1,6 @@
 # Ignore generated figures and local data dumps
 /figures/
-authors.txt
-titles.txt
+/local/
 
 # Python cache/artifacts
 __pycache__/
