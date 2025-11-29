@@ -1,1 +1,14 @@
-/figures
+# Ignore generated figures and local data dumps
+/figures/
+authors.txt
+titles.txt
+
+# Python cache/artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.python-version
+.venv/
+
+# OS noise
+.DS_Store

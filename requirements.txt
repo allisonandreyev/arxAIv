@@ -1,0 +1,12 @@
+sentence_transformers
+hdbscan
+sklearn
+csv
+numpy
+open_clip
+torch
+PIL
+openai
+textwrap
+pandas
+matplotlib
