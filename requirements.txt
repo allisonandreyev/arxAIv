@@ -10,3 +10,4 @@ openai
 textwrap
 pandas
 matplotlib
+tqdm

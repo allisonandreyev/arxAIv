@@ -25,12 +25,46 @@
         return glowSprite;
       }
 
+      const TYPE_COLORS = {
+        generated: 0x66ccff,
+        real: 0xff8c5a
+      };
+
+      function loadTextureWithFallback(primaryPath, fallbackPath) {
+        // Use a plain Image to control fallback when the primary is missing
+        const texture = new THREE.Texture();
+        texture.colorSpace = THREE.SRGBColorSpace;
+
+        const primaryImg = new Image();
+        primaryImg.onload = () => {
+          texture.image = primaryImg;
+          texture.needsUpdate = true;
+        };
+        primaryImg.onerror = () => {
+          if (!fallbackPath) return;
+          const fallbackImg = new Image();
+          fallbackImg.onload = () => {
+            texture.image = fallbackImg;
+            texture.needsUpdate = true;
+          };
+          fallbackImg.src = fallbackPath;
+        };
+        primaryImg.src = primaryPath;
+
+        return texture;
+      }
+
       // Initialize graph
       const Graph = ForceGraph3D()(document.getElementById('3d-graph'))
-        .nodeThreeObject(({ name }) => {
-          const file = name.startsWith('figures/') ? name : `figures/${name}`;
-          const imgTexture = new THREE.TextureLoader().load(`../${file}`);
-          imgTexture.colorSpace = THREE.SRGBColorSpace;
+        .nodeThreeObject(({ name, type }) => {
+          // Use correct folder based on node type
+          const baseDir = type === 'real' ? 'real-figures' : 'figures';
+          const safeName = name.includes('/') ? name.split('/').pop() : name;
+          const file = name.startsWith(`${baseDir}/`) ? name : `${baseDir}/${safeName}`;
+          const primaryPath = `../${file}`;
+          const fallbackPath = baseDir === 'real-figures' ? `../figures/${safeName}` : null;
+
+          const imgTexture = loadTextureWithFallback(primaryPath, fallbackPath);
           const material = new THREE.SpriteMaterial({ map: imgTexture, depthWrite: false });
 
           const group = new THREE.Group();
@@ -38,14 +72,16 @@
           const size = 30;
           sprite.scale.set(size, size);
           group.add(sprite);
-
-          const glow = makeGlowSprite(0xffffff, size);
+            
+          const glowColor = TYPE_COLORS[type] || 0xffffff;
+          const glow = makeGlowSprite(glowColor, size);
           group.add(glow);
 
           return group;
         })
+        // .backgroundImageUrl('https://cdn.jsdelivr.net/npm/starry-sky@1.1.2/docs/view.png')
         .nodeThreeObjectExtend(false)
-        // .nodeAutoColorBy('type')
+        .nodeColor(node => TYPE_COLORS[node.type] || 0xffffff)
         .onNodeClick(node => {
           // Aim at node from outside it
           const distance = 40;
@@ -68,11 +104,12 @@
       Graph.cooldownTime(15000);  // keep forces running longer but at a slower pace
       Graph.d3Force('charge').strength(-120);
       
-
+      
       // Load data and render
-      fetch('figures.json')
+      fetch('both_figures.json')
         .then(res => res.json())
         .then(data => Graph.graphData(data));
+  
 
     </script>
   </body>

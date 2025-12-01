@@ -1,5 +1,6 @@
 # Ignore generated figures and local data dumps
 /figures/
+/real-figures/
 /local/
 
 # Python cache/artifacts
