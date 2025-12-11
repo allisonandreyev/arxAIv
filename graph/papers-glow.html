@@ -1,0 +1,184 @@
+<head>
+  <style>
+    body { margin: 0; font-family: "Times New Roman", Times, serif; }
+  </style>
+
+  <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
+</head>
+
+<body>
+  <div id="3d-graph"></div>
+
+  <script type="module">
+    import * as THREE from "https://esm.sh/three";
+    import SpriteText from "https://esm.sh/three-spritetext";
+
+    const CLUSTER_COLORS = {
+      1: "#7bb7ff",
+      2: "#a5d9a5",
+      3: "#f5eaba",
+      4: "#c084c4",
+      5: "#f5ba98"
+    };
+    const LABEL_FONT = '"Times New Roman", Times, serif';
+
+    function makeGlowSphere(color, radius) {
+      const glowRadius = radius * 1.8;
+      const geometry = new THREE.SphereGeometry(glowRadius, 24, 24);
+      const material = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.25,
+        side: THREE.BackSide
+      });
+
+      const glowMesh = new THREE.Mesh(geometry, material);
+      glowMesh.renderOrder = -1;
+      return glowMesh;
+    }
+
+    const graphEl = document.getElementById("3d-graph");
+    if (!graphEl) {
+      throw new Error("Graph container #3d-graph not found.");
+    }
+
+    const Graph = new ForceGraph3D(graphEl)
+      .jsonUrl("papers.json")
+      .nodeAutoColorBy("cluster")
+      .nodeThreeObject(node => {
+        const finalColor = CLUSTER_COLORS[node.cluster] || "#cccccc";
+        const group = new THREE.Group();
+        const radius = node.size ? node.size : 4;
+
+        const sphereMaterial = new THREE.MeshStandardMaterial({
+          color: finalColor,
+          roughness: 0.32,
+          metalness: 0.25,
+          emissive: finalColor,
+          emissiveIntensity: 0.18,
+          transparent: true,
+          opacity: 1
+        });
+
+        const sphere = new THREE.Mesh(
+          new THREE.SphereGeometry(radius, 24, 24),
+          sphereMaterial
+        );
+        group.add(sphere);
+
+        const glow = makeGlowSphere(finalColor, radius);
+        glow.material.opacity = 0.25;
+        group.add(glow);
+
+        const sprite = new SpriteText(node.name || "");
+        sprite.material.depthWrite = false;
+        sprite.material.transparent = true;
+        sprite.fontFace = LABEL_FONT;
+        sprite.fontWeight = "700";
+        sprite.color = finalColor;
+        sprite.textHeight = 8;
+        sprite.center.y = -0.6;
+        group.add(sprite);
+
+        node.__mats = {
+          sphereMat: sphereMaterial,
+          glowMat: glow.material,
+          label: sprite
+        };
+
+        return group;
+      })
+      .nodeThreeObjectExtend(true)
+      .onNodeClick(node => {
+        const distance = 40;
+        const distRatio = 1 + distance / Math.hypot(node.x || 0, node.y || 0, node.z || 0);
+
+        const newPos = node.x || node.y || node.z
+          ? { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }
+          : { x: 0, y: 0, z: distance };
+
+        orbitPauseUntil = performance.now() + 3200;
+        highlightCluster(node.cluster ?? null);
+        Graph.cameraPosition(newPos, node, 3000);
+      });
+
+    Graph.d3VelocityDecay(0.7);
+    Graph.d3AlphaDecay(0.0);
+    Graph.cooldownTime(15000);
+    Graph.d3Force("charge").strength(-120);
+
+    // cluster highlighting: brighten one cluster, dim the rest
+    let highlightedCluster = null;
+    const DIM_OPACITY = 0.18;
+    const DIM_EMISSIVE = 0.05;
+    const BRIGHT_EMISSIVE = 0.7;
+    const DIM_LABEL = 0.25;
+
+    const linkMatchesCluster = (link, clusterId) => {
+      const sourceCluster = link.source?.cluster ?? null;
+      const targetCluster = link.target?.cluster ?? null;
+      return sourceCluster === clusterId && targetCluster === clusterId;
+    };
+
+    const highlightCluster = (clusterId) => {
+      highlightedCluster = clusterId;
+
+      const nodes = Graph.graphData().nodes || [];
+      nodes.forEach(node => {
+        const mats = node.__mats;
+        if (!mats) return;
+        const isTarget = clusterId === null ? true : node.cluster === clusterId;
+
+        mats.sphereMat.opacity = isTarget ? 1 : DIM_OPACITY;
+        mats.sphereMat.emissiveIntensity = isTarget ? BRIGHT_EMISSIVE : DIM_EMISSIVE;
+
+        mats.glowMat.opacity = isTarget ? 0.6 : 0.04;
+        mats.label.material.opacity = isTarget ? 1 : DIM_LABEL;
+      });
+
+      Graph.linkColor(link => {
+        if (clusterId === null) return "rgba(255,255,255,0.12)";
+        return linkMatchesCluster(link, clusterId)
+          ? "rgba(255,255,255,0.4)"
+          : "rgba(255,255,255,0.04)";
+      });
+
+      Graph.linkWidth(link => {
+        if (clusterId === null) return 0.15;
+        return linkMatchesCluster(link, clusterId) ? 1.1 : 0.15;
+      });
+
+      Graph.linkOpacity(0.85);
+    };
+
+    Graph.onEngineStop(() => {
+      if ((Graph.graphData().nodes || []).length) {
+        highlightCluster(highlightedCluster);
+      }
+    });
+
+    // expose helper for manual toggling from console: highlightCluster(3) or highlightCluster(null)
+    window.highlightCluster = highlightCluster;
+    highlightCluster(4);
+
+    // gently orbit the camera around the scene
+    const ORBIT_DISTANCE = 700;
+    const ORBIT_STEP = Math.PI / 480;
+    let orbitAngle = 0;
+    let orbitPauseUntil = 0;
+
+    const orbitCamera = () => {
+      const now = performance.now();
+      if (now >= orbitPauseUntil) {
+        const x = ORBIT_DISTANCE * Math.sin(orbitAngle);
+        const z = ORBIT_DISTANCE * Math.cos(orbitAngle);
+        Graph.cameraPosition({ x, y: ORBIT_DISTANCE * 0.05, z });
+        orbitAngle += ORBIT_STEP;
+      }
+      requestAnimationFrame(orbitCamera);
+    };
+
+    Graph.cameraPosition({ x: 0, y: ORBIT_DISTANCE * 0.05, z: ORBIT_DISTANCE });
+    orbitCamera();
+  </script>
+</body>

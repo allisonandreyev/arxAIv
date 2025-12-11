@@ -90,18 +90,44 @@
             ? { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }
             : { x: 0, y: 0, z: distance }; // special case if node is in (0,0,0)
 
+          orbitPauseUntil = performance.now() + 3200; // let the focus animation finish
           Graph.cameraPosition(
             newPos, // new position
             node, // lookAt ({ x, y, z })
             3000  // ms transition duration
           );
         });
-    
+          
     Graph.d3VelocityDecay(.7); // more damping, gentler motion
     Graph.d3AlphaDecay(0.0);   // cool the simulation more slowly
     Graph.cooldownTime(15000);  // keep forces running longer but at a slower pace
       
     Graph.d3Force('charge').strength(-120);
+
+    // gently orbit the camera around the scene using TS-style annotated vars
+    /** @type {number} */
+    const ORBIT_DISTANCE = 700;
+    /** @type {number} */
+    const ORBIT_STEP = Math.PI / 480;
+    /** @type {number} */
+    let orbitAngle = 0;
+    /** @type {number} */
+    let orbitPauseUntil = 0;
+
+    const orbitCamera = () => {
+      const now = performance.now();
+      if (now >= orbitPauseUntil) {
+        const x = ORBIT_DISTANCE * Math.sin(orbitAngle);
+        const z = ORBIT_DISTANCE * Math.cos(orbitAngle);
+        Graph.cameraPosition({ x, y: ORBIT_DISTANCE * 0.05, z });
+        orbitAngle += ORBIT_STEP;
+      }
+      requestAnimationFrame(orbitCamera);
+    };
+
+    // start pulled back so the whole scene is visible before orbit kicks in
+    // Graph.cameraPosition({ x: 0, y: ORBIT_DISTANCE * 0.05, z: ORBIT_DISTANCE });
+    // orbitCamera();
 
   </script>
 </body>
