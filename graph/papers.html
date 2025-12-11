@@ -1,5 +1,7 @@
 <head>
-  <style> body { margin: 0; } </style>
+  <style>
+    body { margin: 0; font-family: "Times New Roman", Times, serif; }
+  </style>
 
   <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
 </head>
@@ -18,6 +20,7 @@
       4: "#c084c4",
       5: "#f5ba98"
     };
+    const LABEL_FONT = '"Times New Roman", Times, serif';
 
     // Define this function within your <script type="module">
     function makeGlowSphere(color, radius) {
@@ -69,6 +72,8 @@
 
           const sprite = new SpriteText(node.name || "");
           sprite.material.depthWrite = false;
+          sprite.fontFace = LABEL_FONT;
+          sprite.fontWeight = "700";
           sprite.color = finalColor;
           sprite.textHeight = 8;
           sprite.center.y = -0.6;
