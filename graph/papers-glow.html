@@ -159,7 +159,7 @@
 
     // expose helper for manual toggling from console: highlightCluster(3) or highlightCluster(null)
     window.highlightCluster = highlightCluster;
-    highlightCluster(4);
+    highlightCluster(3);
 
     // gently orbit the camera around the scene
     const ORBIT_DISTANCE = 700;
@@ -178,7 +178,7 @@
       requestAnimationFrame(orbitCamera);
     };
 
-    Graph.cameraPosition({ x: 0, y: ORBIT_DISTANCE * 0.05, z: ORBIT_DISTANCE });
-    orbitCamera();
+    // Graph.cameraPosition({ x: 0, y: ORBIT_DISTANCE * 0.05, z: ORBIT_DISTANCE });
+    // orbitCamera();
   </script>
 </body>

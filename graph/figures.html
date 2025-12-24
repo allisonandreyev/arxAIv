@@ -73,6 +73,26 @@
       fetch('figures.json')
         .then(res => res.json())
         .then(data => Graph.graphData(data));
+      
+        // gently orbit the camera around the scene
+      const ORBIT_DISTANCE = 700;
+      const ORBIT_STEP = Math.PI / 480;
+      let orbitAngle = 0;
+      let orbitPauseUntil = 0;
+
+      const orbitCamera = () => {
+        const now = performance.now();
+        if (now >= orbitPauseUntil) {
+          const x = ORBIT_DISTANCE * Math.sin(orbitAngle);
+          const z = ORBIT_DISTANCE * Math.cos(orbitAngle);
+          Graph.cameraPosition({ x, y: ORBIT_DISTANCE * 0.05, z });
+          orbitAngle += ORBIT_STEP;
+        }
+        requestAnimationFrame(orbitCamera);
+      };
+
+      // Graph.cameraPosition({ x: 0, y: ORBIT_DISTANCE * 0.05, z: ORBIT_DISTANCE });
+      // orbitCamera();
 
     </script>
   </body>

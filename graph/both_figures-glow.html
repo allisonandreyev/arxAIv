@@ -1,0 +1,172 @@
+<head>
+  <style> body { margin: 0; } </style>
+
+  <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
+</head>
+
+<body>
+  <div id="3d-graph"></div>
+
+  <script type="module">
+    import * as THREE from "https://esm.sh/three";
+
+    // Simple glow helper
+    function makeGlowSprite(color, size) {
+      const glowMaterial = new THREE.SpriteMaterial({
+        color,
+        transparent: true,
+        opacity: 0.2,
+        depthWrite: false
+      });
+      const glowSprite = new THREE.Sprite(glowMaterial);
+      glowSprite.scale.set(size * 1.2, size * 1.2);
+      return glowSprite;
+    }
+
+    const TYPE_COLORS = {
+      generated: 0x66ccff,
+      real: 0xff8c5a
+    };
+
+    function loadTextureWithFallback(primaryPath, fallbackPath) {
+      const texture = new THREE.Texture();
+      texture.colorSpace = THREE.SRGBColorSpace;
+
+      const primaryImg = new Image();
+      primaryImg.onload = () => {
+        texture.image = primaryImg;
+        texture.needsUpdate = true;
+      };
+      primaryImg.onerror = () => {
+        if (!fallbackPath) return;
+        const fallbackImg = new Image();
+        fallbackImg.onload = () => {
+          texture.image = fallbackImg;
+          texture.needsUpdate = true;
+        };
+        fallbackImg.src = fallbackPath;
+      };
+      primaryImg.src = primaryPath;
+
+      return texture;
+    }
+
+    const graphEl = document.getElementById("3d-graph");
+    if (!graphEl) throw new Error("Graph container #3d-graph not found.");
+
+    const Graph = ForceGraph3D()(graphEl)
+      .jsonUrl("both_figures.json")
+      .nodeThreeObject((node) => {
+        const { name, type } = node;
+        const baseDir = type === "real" ? "real-figures" : "figures";
+        const safeName = name && name.includes("/") ? name.split("/").pop() : name;
+        const file = name && name.startsWith(`${baseDir}/`) ? name : `${baseDir}/${safeName}`;
+        const primaryPath = `../${file}`;
+        const fallbackPath = baseDir === "real-figures" ? `../figures/${safeName}` : null;
+
+        const imgTexture = loadTextureWithFallback(primaryPath, fallbackPath);
+        const material = new THREE.SpriteMaterial({ map: imgTexture, depthWrite: false, transparent: true, opacity: 1 });
+
+        const group = new THREE.Group();
+        const sprite = new THREE.Sprite(material);
+        const size = 30;
+        sprite.scale.set(size, size);
+        group.add(sprite);
+
+        const glowColor = TYPE_COLORS[type] || 0xffffff;
+        const glow = makeGlowSprite(glowColor, size);
+        group.add(glow);
+
+        // cache materials on the node so we can dim/highlight later
+        node.__mats = { spriteMat: material, glowMat: glow.material };
+        return group;
+      })
+      .nodeThreeObjectExtend(false)
+      .nodeColor(node => TYPE_COLORS[node.type] || 0xffffff)
+      .onNodeClick(node => {
+        const distance = 40;
+        const distRatio = 1 + distance / Math.hypot(node.x || 0, node.y || 0, node.z || 0);
+
+        const newPos = node.x || node.y || node.z
+          ? { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }
+          : { x: 0, y: 0, z: distance };
+
+        orbitPauseUntil = performance.now() + 3200;
+        highlightType(node.type ?? null);
+        Graph.cameraPosition(newPos, node, 3000);
+      });
+
+    Graph.d3VelocityDecay(0.8);
+    Graph.d3AlphaDecay(0.0);
+    Graph.cooldownTime(15000);
+    Graph.d3Force("charge").strength(-120);
+
+    // type highlighting: brighten one type, dim the rest
+    let highlightedType = null;
+    const DIM_OPACITY = 0.15;
+    const DIM_GLOW = 0.02;
+
+    const linkMatchesType = (link, type) => {
+      const s = link.source?.type ?? null;
+      const t = link.target?.type ?? null;
+      return s === type && t === type;
+    };
+
+    const highlightType = (type) => {
+      highlightedType = type;
+      const nodes = Graph.graphData().nodes || [];
+
+      nodes.forEach(node => {
+        const mats = node.__mats;
+        if (!mats) return;
+        const isTarget = type === null ? true : node.type === type;
+        mats.spriteMat.opacity = isTarget ? 1 : DIM_OPACITY;
+        mats.glowMat.opacity = isTarget ? 0.8 : DIM_GLOW;
+      });
+
+      Graph.linkColor(link => {
+        if (type === null) return "rgba(255,255,255,0.12)";
+        return linkMatchesType(link, type)
+          ? "rgba(255,255,255,0.4)"
+          : "rgba(255,255,255,0.04)";
+      });
+
+      Graph.linkWidth(link => {
+        if (type === null) return 0.15;
+        return linkMatchesType(link, type) ? 1.0 : 0.15;
+      });
+
+      Graph.linkOpacity(0.85);
+    };
+
+    Graph.onEngineStop(() => {
+      if ((Graph.graphData().nodes || []).length) {
+        highlightType(highlightedType);
+      }
+    });
+
+    // expose helper for manual toggling from console: highlightType("real") or highlightType(null)
+    window.highlightType = highlightType;
+    highlightType(null);
+
+    // gently orbit the camera around the scene
+    const ORBIT_DISTANCE = 1200;
+    const ORBIT_STEP = Math.PI / 480;
+    let orbitAngle = 0;
+    let orbitPauseUntil = 0;
+
+    const orbitCamera = () => {
+      const now = performance.now();
+      if (now >= orbitPauseUntil) {
+        const x = ORBIT_DISTANCE * Math.sin(orbitAngle);
+        const z = ORBIT_DISTANCE * Math.cos(orbitAngle);
+        Graph.cameraPosition({ x, y: ORBIT_DISTANCE * 0.05, z });
+        orbitAngle += ORBIT_STEP;
+      }
+      requestAnimationFrame(orbitCamera);
+    };
+
+    Graph.cameraPosition({ x: 0, y: ORBIT_DISTANCE * 0.05, z: ORBIT_DISTANCE });
+    orbitCamera();
+  </script>
+</body>
