@@ -1,8 +1,6 @@
 <head>
     <style> body { margin: 0; } </style>
-  
     <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
-    <!--<script src="../../dist/3d-force-graph.js"></script>-->
   </head>
   
   <body>
@@ -11,9 +9,7 @@
     <script type="module">
       import * as THREE from 'https://esm.sh/three';
 
-      // Simple glow helper
       function makeGlowSprite(color, size) {
-        // Slightly larger, translucent halo around the image sprite
         const glowMaterial = new THREE.SpriteMaterial({
           color,
           transparent: true,
@@ -25,7 +21,6 @@
         return glowSprite;
       }
 
-      // Initialize graph
       const Graph = ForceGraph3D()(document.getElementById('3d-graph'))
         .nodeThreeObject(({ name }) => {
           const file = name.startsWith('figures/') ? name : `figures/${name}`;
@@ -45,36 +40,30 @@
           return group;
         })
         .nodeThreeObjectExtend(false)
-        // .nodeAutoColorBy('type')
         .onNodeClick(node => {
-          // Aim at node from outside it
           const distance = 40;
           const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
 
           const newPos = node.x || node.y || node.z
             ? { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }
-            : { x: 0, y: 0, z: distance }; // special case if node is in (0,0,0)
+            : { x: 0, y: 0, z: distance }; 
 
           Graph.cameraPosition(
-            newPos, // new position
-            node, // lookAt ({ x, y, z })
-            3000  // ms transition duration
+            newPos, 
+            node,
+            3000  
           );
         });
       
-      // Slow down the initial settling animation
-      Graph.d3VelocityDecay(.8); // more damping, gentler motion
-      Graph.d3AlphaDecay(0.0);   // cool the simulation more slowly
-      Graph.cooldownTime(15000);  // keep forces running longer but at a slower pace
+      Graph.d3VelocityDecay(.8); 
+      Graph.d3AlphaDecay(0.0);   
+      Graph.cooldownTime(15000);
       Graph.d3Force('charge').strength(-120);
       
-
-      // Load data and render
       fetch('figures.json')
         .then(res => res.json())
         .then(data => Graph.graphData(data));
       
-        // gently orbit the camera around the scene
       const ORBIT_DISTANCE = 700;
       const ORBIT_STEP = Math.PI / 480;
       let orbitAngle = 0;
@@ -90,9 +79,6 @@
         }
         requestAnimationFrame(orbitCamera);
       };
-
-      // Graph.cameraPosition({ x: 0, y: ORBIT_DISTANCE * 0.05, z: ORBIT_DISTANCE });
-      // orbitCamera();
 
     </script>
   </body>

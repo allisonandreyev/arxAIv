@@ -107,7 +107,6 @@
     Graph.cooldownTime(15000);
     Graph.d3Force("charge").strength(-120);
 
-    // cluster highlighting: brighten one cluster, dim the rest
     let highlightedCluster = null;
     const DIM_OPACITY = 0.18;
     const DIM_EMISSIVE = 0.05;
@@ -157,11 +156,9 @@
       }
     });
 
-    // expose helper for manual toggling from console: highlightCluster(3) or highlightCluster(null)
     window.highlightCluster = highlightCluster;
-    highlightCluster(3);
+    highlightCluster(1);
 
-    // gently orbit the camera around the scene
     const ORBIT_DISTANCE = 700;
     const ORBIT_STEP = Math.PI / 480;
     let orbitAngle = 0;
@@ -177,8 +174,5 @@
       }
       requestAnimationFrame(orbitCamera);
     };
-
-    // Graph.cameraPosition({ x: 0, y: ORBIT_DISTANCE * 0.05, z: ORBIT_DISTANCE });
-    // orbitCamera();
   </script>
 </body>

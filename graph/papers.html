@@ -22,19 +22,14 @@
     };
     const LABEL_FONT = '"Times New Roman", Times, serif';
 
-    // Define this function within your <script type="module">
     function makeGlowSphere(color, radius) {
-      const glowRadius = radius * 1.8; // Make the glow slightly larger than the node
-      
-      // Create a sphere geometry for the glow
+      const glowRadius = radius * 1.8; 
       const geometry = new THREE.SphereGeometry(glowRadius, 24, 24);
-      
-      // Use MeshBasicMaterial: it's not affected by scene lights, making it suitable for a 'glow'.
       const material = new THREE.MeshBasicMaterial({
           color: color,
           transparent: true,
-          opacity: 0.25, // Adjust opacity for the glow intensity
-          side: THREE.BackSide // Render faces pointing away from the camera for a subtle halo effect
+          opacity: 0.25, 
+          side: THREE.BackSide 
       });
       
       const glowMesh = new THREE.Mesh(geometry, material);
@@ -48,12 +43,9 @@
         .nodeAutoColorBy('cluster')
         .nodeThreeObject(node => {
   
-          // This value is based on the 'cluster' property as you originally intended
           const finalColor = CLUSTER_COLORS[node.cluster] || "#cccccc"; 
           const group = new THREE.Group();
           const radius = node.size ? node.size : 4;
-
-          // sphere body
           const sphere = new THREE.Mesh(
           new THREE.SphereGeometry(radius, 24, 24),
           new THREE.MeshStandardMaterial({
@@ -66,7 +58,6 @@
           );
           group.add(sphere);
 
-          // glow halo
           const glow = makeGlowSphere(finalColor, radius); 
           group.add(glow);
 
@@ -82,36 +73,29 @@
           return group;})
         .nodeThreeObjectExtend(true)
         .onNodeClick(node => {
-          // Aim at node from outside it
           const distance = 40;
           const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
 
           const newPos = node.x || node.y || node.z
             ? { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }
-            : { x: 0, y: 0, z: distance }; // special case if node is in (0,0,0)
+            : { x: 0, y: 0, z: distance };
 
-          orbitPauseUntil = performance.now() + 3200; // let the focus animation finish
+          orbitPauseUntil = performance.now() + 3200; 
           Graph.cameraPosition(
-            newPos, // new position
-            node, // lookAt ({ x, y, z })
-            3000  // ms transition duration
+            newPos,
+            node, 
+            3000  
           );
         });
           
-    Graph.d3VelocityDecay(.7); // more damping, gentler motion
-    Graph.d3AlphaDecay(0.0);   // cool the simulation more slowly
-    Graph.cooldownTime(15000);  // keep forces running longer but at a slower pace
+    Graph.d3VelocityDecay(.7); 
+    Graph.d3AlphaDecay(0.0);  
+    Graph.cooldownTime(15000);
       
     Graph.d3Force('charge').strength(-120);
-
-    // gently orbit the camera around the scene using TS-style annotated vars
-    /** @type {number} */
     const ORBIT_DISTANCE = 700;
-    /** @type {number} */
     const ORBIT_STEP = Math.PI / 480;
-    /** @type {number} */
     let orbitAngle = 0;
-    /** @type {number} */
     let orbitPauseUntil = 0;
 
     const orbitCamera = () => {
@@ -124,10 +108,6 @@
       }
       requestAnimationFrame(orbitCamera);
     };
-
-    // start pulled back so the whole scene is visible before orbit kicks in
-    // Graph.cameraPosition({ x: 0, y: ORBIT_DISTANCE * 0.05, z: ORBIT_DISTANCE });
-    // orbitCamera();
 
   </script>
 </body>
