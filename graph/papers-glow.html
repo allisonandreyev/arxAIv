@@ -1,6 +1,58 @@
 <head>
   <style>
     body { margin: 0; font-family: "Times New Roman", Times, serif; }
+    #controls {
+      position: fixed;
+      bottom: 4px;
+      right: 4px;
+      background: rgba(0, 0, 0, 0.45);
+      color: #f8f8f8;
+      padding: 3px 4px;
+      border-radius: 3px;
+      font-size: 10px;
+      line-height: 1.05;
+      z-index: 10;
+      backdrop-filter: blur(2px);
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
+    }
+    #controls .title {
+      font-weight: 700;
+      margin-bottom: 2px;
+      font-size: 10px;
+      opacity: 0.9;
+    }
+    .cluster-buttons {
+      display: flex;
+      gap: 2px;
+      flex-wrap: wrap;
+    }
+    .cluster-btn {
+      border: 1px solid #ffffff28;
+      background: #1a1a1a;
+      color: #f8f8f8;
+      padding: 2px 4px;
+      border-radius: 3px;
+      cursor: pointer;
+      min-width: 24px;
+      font-size: 10px;
+      transition: transform 100ms ease, background 120ms ease, border-color 120ms ease;
+    }
+    .cluster-btn:hover {
+      background: #333;
+      transform: translateY(-1px);
+    }
+    .cluster-btn.active {
+      background: #f8f8f8;
+      color: #111;
+      border-color: #f8f8f8;
+      font-weight: 700;
+    }
+    .hint {
+      margin-top: 2px;
+      font-size: 9px;
+      color: #dcdcdc;
+      opacity: 0.7;
+    }
   </style>
 
   <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
@@ -8,6 +60,18 @@
 
 <body>
   <div id="3d-graph"></div>
+  <div id="controls">
+    <!-- <div class="title">Highlight Cluster</div> -->
+    <div class="cluster-buttons">
+      <button class="cluster-btn" data-cluster="all">All</button>
+      <button class="cluster-btn" data-cluster="1">1</button>
+      <button class="cluster-btn" data-cluster="2">2</button>
+      <button class="cluster-btn" data-cluster="3">3</button>
+      <button class="cluster-btn" data-cluster="4">4</button>
+      <button class="cluster-btn" data-cluster="5">5</button>
+    </div>
+    <!-- <div class="hint">Click or press 1-5; 0 resets to all.</div> -->
+  </div>
 
   <script type="module">
     import * as THREE from "https://esm.sh/three";
@@ -157,10 +221,44 @@
     });
 
     window.highlightCluster = highlightCluster;
-    highlightCluster(1);
+
+    const clusterButtons = Array.from(document.querySelectorAll(".cluster-btn"));
+    const setActiveButton = (clusterId) => {
+      clusterButtons.forEach(btn => {
+        const btnCluster = btn.dataset.cluster;
+        const isActive = (clusterId === null && btnCluster === "all") || btnCluster === String(clusterId);
+        btn.classList.toggle("active", isActive);
+      });
+    };
+
+    const handleClusterSelection = (clusterId) => {
+      const targetCluster = clusterId === "all" ? null : Number(clusterId);
+      highlightCluster(targetCluster);
+      setActiveButton(targetCluster);
+    };
+
+    clusterButtons.forEach(btn => {
+      btn.addEventListener("click", () => handleClusterSelection(btn.dataset.cluster));
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "0") {
+        handleClusterSelection("all");
+      } else if (["1", "2", "3", "4", "5"].includes(event.key)) {
+        handleClusterSelection(event.key);
+      }
+    });
+
+    highlightCluster(0);
+    setActiveButton(3);
 
     const ORBIT_DISTANCE = 700;
     const ORBIT_STEP = Math.PI / 480;
+    const camera = Graph.camera();
+    const controls = Graph.controls();
+    controls.enableDamping = false;
+    controls.dampingFactor = 0;
+    controls.autoRotate = false;
     let orbitAngle = 0;
     let orbitPauseUntil = 0;
 
@@ -169,10 +267,14 @@
       if (now >= orbitPauseUntil) {
         const x = ORBIT_DISTANCE * Math.sin(orbitAngle);
         const z = ORBIT_DISTANCE * Math.cos(orbitAngle);
-        Graph.cameraPosition({ x, y: ORBIT_DISTANCE * 0.05, z });
+        camera.position.set(x, ORBIT_DISTANCE * 0.05, z);
+        camera.lookAt(0, 0, 0);
         orbitAngle += ORBIT_STEP;
       }
+      controls.update();
       requestAnimationFrame(orbitCamera);
     };
+
+    orbitCamera();
   </script>
 </body>

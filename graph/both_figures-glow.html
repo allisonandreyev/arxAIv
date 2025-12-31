@@ -142,7 +142,7 @@
     });
 
     window.highlightType = highlightType;
-    highlightType(null);
+    highlightType("real");
 
     const ORBIT_DISTANCE = 1200;
     const ORBIT_STEP = Math.PI / 480;
@@ -161,6 +161,6 @@
     };
 
     Graph.cameraPosition({ x: 0, y: ORBIT_DISTANCE * 0.05, z: ORBIT_DISTANCE });
-    orbitCamera();
+    // orbitCamera();
   </script>
 </body>

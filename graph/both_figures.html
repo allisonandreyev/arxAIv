@@ -83,6 +83,7 @@
             ? { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }
             : { x: 0, y: 0, z: distance };
 
+          orbitPauseUntil = performance.now() + 3200;
           Graph.cameraPosition(
             newPos, 
             node, 
@@ -94,11 +95,28 @@
       Graph.d3AlphaDecay(0.0);   
       Graph.cooldownTime(15000); 
       Graph.d3Force('charge').strength(-120);
+
+      const ORBIT_DISTANCE = 1200;
+      const ORBIT_STEP = Math.PI / 480;
+      let orbitAngle = 0;
+      let orbitPauseUntil = 0;
+
+      const orbitCamera = () => {
+        const now = performance.now();
+        if (now >= orbitPauseUntil) {
+          const x = ORBIT_DISTANCE * Math.sin(orbitAngle);
+          const z = ORBIT_DISTANCE * Math.cos(orbitAngle);
+          Graph.cameraPosition({ x, y: ORBIT_DISTANCE * 0.05, z });
+          orbitAngle += ORBIT_STEP;
+        }
+        requestAnimationFrame(orbitCamera);
+      };
       
       fetch('both_figures.json')
         .then(res => res.json())
         .then(data => Graph.graphData(data));
-  
+
+      // orbitCamera();
 
     </script>
   </body>
