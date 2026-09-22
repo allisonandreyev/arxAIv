@@ -11,3 +11,4 @@ textwrap
 pandas
 matplotlib
 tqdm
+pytesseract

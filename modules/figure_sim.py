@@ -1,4 +1,5 @@
 import csv
+import math
 import os
 from pathlib import Path
 from typing import List, Tuple
@@ -8,6 +9,11 @@ import numpy as np
 import open_clip
 import torch
 from PIL import Image
+
+try:  # works both as a script and as modules.figure_sim
+    from modules.ocr_gibberish import gibberish_ratio
+except ImportError:
+    from ocr_gibberish import gibberish_ratio
 
 # Default locations (kept from the original Colab setup)
 REAL_DIR = Path("drive/MyDrive/Real Figures")
@@ -64,27 +70,41 @@ def structural_score(path: Path) -> float:
     return 0.6 * entropy + 0.4 * edge_density
 
 
+def _csv_value(value: float) -> object:
+    """Write nan as an empty cell so "no text" reads differently from zero."""
+    return "" if isinstance(value, float) and math.isnan(value) else value
+
+
 def score_ai_figures(real_dir: Path, ai_dir: Path, output_csv: Path = OUTPUT_CSV) -> None:
-    """Compute CLIP similarity and simple structure metrics for AI figures."""
+    """Compute CLIP similarity, structure, and raw-OCR text metrics for AI figures."""
     model, preprocess = load_model()
 
     real_embeddings = embed_directory(real_dir, model, preprocess)
     centroid = real_embeddings.mean(axis=0)
     centroid = centroid / np.linalg.norm(centroid)
 
-    scores: List[Tuple[str, float, float]] = []
+    scores: List[Tuple[str, float, float, float, int]] = []
     for fname in sorted(os.listdir(ai_dir)):
         if fname.endswith(".png"):
             emb = embed_image(ai_dir / fname, model, preprocess)
             sim = cosine(emb, centroid)
             struct = structural_score(ai_dir / fname)
-            scores.append((fname, sim, struct))
+            gib, tokens = gibberish_ratio(ai_dir / fname)
+            scores.append((fname, sim, struct, gib, tokens))
 
     with output_csv.open("w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["filename", "clip_similarity", "structural_complexity"])
-        for fname, sim, struct in scores:
-            writer.writerow([fname, sim, struct])
+        writer.writerow(
+            [
+                "filename",
+                "clip_similarity",
+                "structural_complexity",
+                "gibberish_ratio",
+                "ocr_token_count",
+            ]
+        )
+        for fname, sim, struct, gib, tokens in scores:
+            writer.writerow([fname, sim, struct, _csv_value(gib), tokens])
 
 
 if __name__ == "__main__":
